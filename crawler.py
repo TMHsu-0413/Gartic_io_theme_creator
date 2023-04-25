@@ -10,11 +10,15 @@ from selenium.webdriver.common.by import By
 all_dict = set()
 def only_contain_chinese(name):
     temp = name
-    print(name)
     for i in range(len(name)):
         cur = name[i]
+        if cur == '（' or cur == '[' or cur == '-' or cur == '~':
+            if i != 0:
+                temp = temp[:i] + ' ' + temp[i+1:]
+            else:
+                temp = temp[1:]
         # 漢字
-        if '\u4e00' <= cur <= '\u9fa5':
+        elif '\u4e00' <= cur <= '\u9fa5' or cur == '，' or cur == '、':
             continue
         # 英文字
         elif cur.isalpha():
@@ -26,8 +30,11 @@ def only_contain_chinese(name):
         elif cur.isspace():
             continue
         else:
-            temp.replace(cur,' ')
-    print(temp)
+            if i != 0:
+                temp = temp[:i] + ' ' + temp[i+1:]
+            else:
+                temp = temp[1:]
+    #print(temp)
     return temp
 
 def cmp(a,b):
@@ -35,7 +42,7 @@ def cmp(a,b):
     for i in range(min(len(a),len(b))):
         if (a[i] == b[i]):
             ct+=1
-    return ct / min(len(a),len(b))
+    return ct / min(len(a),len(b)) if min(len(a),len(b)) != 0 else 0
 
 def line_crawler():
     locator = (By.CLASS_NAME,"huBOKl")
@@ -48,10 +55,10 @@ def line_crawler():
         all_anima = driver.find_elements(By.CLASS_NAME,"huBOKl")
         for ani in all_anima:
             duplicate = False
-            name = ''.join(ani.text).strip().split(' ')[0]
-            name = only_contain_chinese(name)
+            name = ''.join(ani.text).strip()
+            name = only_contain_chinese(name).split(' ')[0]
             for el in all_dict:
-                if cmp(name,el) >= 0.5:
+                if cmp(name,el) >= 0.7:
                     duplicate = True
                     break
             if not duplicate:
@@ -69,11 +76,11 @@ def baha_crawler():
         soup = BeautifulSoup(r.text,'html.parser')
         all_ani = soup.find_all('p', class_="theme-name")
         for ani in all_ani:
-            name = ''.join(ani.text).strip().split(' ')[0]
-            name = only_contain_chinese(name)
+            name = ''.join(ani.text).strip()
+            name = only_contain_chinese(name).split(' ')[0]
             duplicate = False
             for el in all_dict:
-                if cmp(name,el) >= 0.5:
+                if cmp(name,el) >= 0.7:
                     duplicate = True
                     break
             if not duplicate:
@@ -84,22 +91,52 @@ def muse_crawler():
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36 Edg/112.0.1722.58'
     }
     for page in range(1,32):
-        print(f'parsing muse {page} page ...')
         url = f'https://www.e-muse.com.tw/zh/animation_cat/anime-head/?page={page}'
+        print(f'parsing muse {page} page ...')
         r = requests.get(url,headers=headers)
         soup = BeautifulSoup(r.text,'html.parser')
         all_ani = soup.find_all('p', class_="p-18 txt-bold")
         for ani in all_ani:
-            name = ''.join(ani.text).strip().split(' ')[0]
-            name = only_contain_chinese(name)
+            name = ''.join(ani.text).strip()
+            name = only_contain_chinese(name).split(' ')[0]
             duplicate = False
             for el in all_dict:
-                if cmp(name,el) >= 0.5:
+                if cmp(name,el) >= 0.7:
                     duplicate = True
                     break
             if not duplicate:
                 all_dict.add(name)
 
+def wiki_crawler():
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36 Edg/112.0.1722.58'
+    }
+    for year in range(2012,2024):
+        url = f'https://zh.wikipedia.org/zh-tw/{year}%E5%B9%B4%E6%97%A5%E6%9C%AC%E5%8B%95%E7%95%AB%E5%88%97%E8%A1%A8'
+        print(f'parsing wiki {year} year anime ...')
+        r = requests.get(url,headers=headers)
+        soup = BeautifulSoup(r.text,'html.parser')
+        table = soup.find_all('table', class_="wikitable")
+        for i in range(4):
+            anime_row = table[i].find_all('tr')
+            for anime in anime_row[1:]:
+                anime_name = anime.find_all('td')
+                if (len(anime_name) >= 2):
+                    if (anime_name[1].find('a') != None):
+                        name = ''.join(anime_name[1].find('a').text).strip()
+                    else:
+                        name = ''.join(anime_name[1].text).strip()
+                    name = only_contain_chinese(name).split(' ')[0]
+                    duplicate = False
+                    for el in all_dict:
+                        if cmp(name,el) >= 0.7:
+                            duplicate = True
+                            break
+                    if not duplicate:
+                        all_dict.add(name)
+
+#only_contain_chinese('監獄學園')
+wiki_crawler()
 baha_crawler()
 muse_crawler()
 line_crawler()
