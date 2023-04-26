@@ -12,13 +12,13 @@ def only_contain_chinese(name):
     temp = name
     for i in range(len(name)):
         cur = name[i]
-        if cur == '（' or cur == '[' or cur == '-' or cur == '~':
-            if i != 0:
-                temp = temp[:i] + ' ' + temp[i+1:]
-            else:
-                temp = temp[1:]
+        # 截斷 第x季...
+        if cur == '（' or cur == '第':
+            return temp[:i]
+        elif (i+1) < len(name) and cur == ' ' and name[i+1].isalpha():
+            return temp[:i]
         # 漢字
-        elif '\u4e00' <= cur <= '\u9fa5' or cur == '，' or cur == '、':
+        elif '\u4e00' <= cur <= '\u9fa5' or cur == '，' or cur == '、' or cur == '！' or cur == '－':
             continue
         # 英文字
         elif cur.isalpha():
@@ -56,7 +56,7 @@ def line_crawler():
         for ani in all_anima:
             duplicate = False
             name = ''.join(ani.text).strip()
-            name = only_contain_chinese(name).split(' ')[0]
+            name = only_contain_chinese(name)
             for el in all_dict:
                 if cmp(name,el) >= 0.7:
                     duplicate = True
@@ -69,7 +69,7 @@ def baha_crawler():
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36 Edg/112.0.1722.58'
     }
-    for page in range(1,54):
+    for page in range(1,22):
         print(f'parsing bahamut {page} page ...')
         url = f'https://ani.gamer.com.tw/animeList.php?page={page}&c=All&sort=2'
         r = requests.get(url,headers=headers)
@@ -77,7 +77,7 @@ def baha_crawler():
         all_ani = soup.find_all('p', class_="theme-name")
         for ani in all_ani:
             name = ''.join(ani.text).strip()
-            name = only_contain_chinese(name).split(' ')[0]
+            name = only_contain_chinese(name)
             duplicate = False
             for el in all_dict:
                 if cmp(name,el) >= 0.7:
@@ -98,7 +98,7 @@ def muse_crawler():
         all_ani = soup.find_all('p', class_="p-18 txt-bold")
         for ani in all_ani:
             name = ''.join(ani.text).strip()
-            name = only_contain_chinese(name).split(' ')[0]
+            name = only_contain_chinese(name)
             duplicate = False
             for el in all_dict:
                 if cmp(name,el) >= 0.7:
@@ -107,6 +107,7 @@ def muse_crawler():
             if not duplicate:
                 all_dict.add(name)
 
+# 太多垃圾
 def wiki_crawler():
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36 Edg/112.0.1722.58'
@@ -126,7 +127,7 @@ def wiki_crawler():
                         name = ''.join(anime_name[1].find('a').text).strip()
                     else:
                         name = ''.join(anime_name[1].text).strip()
-                    name = only_contain_chinese(name).split(' ')[0]
+                    name = only_contain_chinese(name)
                     duplicate = False
                     for el in all_dict:
                         if cmp(name,el) >= 0.7:
@@ -134,12 +135,32 @@ def wiki_crawler():
                             break
                     if not duplicate:
                         all_dict.add(name)
+def myself_crawler():
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36 Edg/112.0.1722.58'
+    }
+    url = f'https://myself-bbs.com/portal.php?mod=topic&topicid=8'
+    r = requests.get(url,headers=headers)
+    soup = BeautifulSoup(r.text,'html.parser')
+    anime_div = soup.find_all('div', class_="module cl xl xl1")
+    for div in anime_div:
+        row = div.find_all('li')
+        for r in row:
+            name = ''.join(r.find('a').text).split('／')[0]
+            name = only_contain_chinese(name)
+            duplicate = False
+            for el in all_dict:
+                if cmp(name,el) >= 0.7:
+                    duplicate = True
+                    break
+            if not duplicate:
+                all_dict.add(name)
 
-#only_contain_chinese('監獄學園')
-wiki_crawler()
+#wiki_crawler()  
+myself_crawler()
 baha_crawler()
-muse_crawler()
-line_crawler()
+#muse_crawler()
+#line_crawler()
 with open('output.csv','w',newline='') as csvfile:
     writer = csv.writer(csvfile,delimiter=' ')
     for el in sorted(all_dict):
